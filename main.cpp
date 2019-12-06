@@ -476,11 +476,11 @@ Prikaz zistiTah() {
     auto hraci = spocitatVzdalenostOdHraca();
     int obet;
     int dostrel1=max(dostrel(ja.zbrane[0]),dostrel(ja.zbrane[1]));
-    if(dostrel1>19){dostrel1-=4;}
-    if(dostrel1>30){dostrel1-=6;}
+    if(dostrel1>19){dostrel1-=2;}
+    if(dostrel1>30){dostrel1-=3;}
     for(obet=1; obet<hraci.size(); obet++){
         cerr << "Vzdalenost hrace" << obet <<" " << hraci[obet].vzd << endl; 
-        if(hraci[obet].vzd<dostrel1 && !zavadziaStena(hraci[obet].x,hraci[obet].y)){break;}
+        if(hraci[obet].vzd<=dostrel1 && !zavadziaStena(hraci[obet].x,hraci[obet].y)){break;}
     }
     cerr << obet << " " << hraci.size() << " hraci" << endl;
     if(obet < hraci.size()){
@@ -515,13 +515,15 @@ Prikaz zistiTah() {
       if(hraci[obet].vzd>3 && hraci[obet].vzd<11){
           if(ja.zbrane[0]==1||ja.zbrane[1]==1){if(ja.zbrane[ja.aktualna_zbran]!=1){return prikazZmenZbran();}}
           else{if(ja.zbrane[ja.aktualna_zbran]!=2){return prikazZmenZbran();}}} //sniperka
-      if(hraci[obet].vzd<10){
+      if(hraci[obet].vzd>10){
           if(ja.zbrane[0]==2||ja.zbrane[1]==2){if(ja.zbrane[ja.aktualna_zbran]!=2){return prikazZmenZbran();}}
           else{if(ja.zbrane[ja.aktualna_zbran]!=1){return prikazZmenZbran();}}} //samopal
 
       return prikazVystrel(hraci[obet].x,hraci[obet].y);
     }
 
+    if(ja.zivoty < 80)
+      return prikazLiecSa();
 
     //
     // Sebrani predmetu
