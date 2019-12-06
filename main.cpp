@@ -267,6 +267,10 @@ Prikaz zistiTah() {
 
     // TODO: Pokud stoji blizko nepritel a ja mam zbran na dalku - strilet
 
+    
+    //
+    // Sebrani predmetu
+    //
     int index = -1;
     for(int i = 0; i < stav.itemy[ja.pozicia.y][ja.pozicia.x].size(); i++){
       if(i == 0)
@@ -284,7 +288,9 @@ Prikaz zistiTah() {
     }
     
 
-    // TODO: Stojim na dobrem predmete - sebrat ho
+    //
+    // Najiti predmetu
+    //
     cerr << "Dobre" << endl;
     Pozicia pozice = Pozicia(-1, -1);
     double bestP = -1;
@@ -310,6 +316,10 @@ Prikaz zistiTah() {
         }
       }
     }
+
+    //
+    // Najiti cesty k nejlepsimu predmetu
+    //
     cerr << "Dobre2" << endl;
     int lastPohyb = -1;
     if(bestP != -1){
@@ -343,12 +353,13 @@ Prikaz zistiTah() {
       }
     }
 
-    // TODO: Jit na pozici nejlepsiho predmetu za pomoci priority - jit
-
     // TODO: Pokud nevim, kam jit, jit do stedu
 
     // TODO: Jit nejrychlejsim zpusobem
 
+    //
+    // Pokud se dostanu sem - strilim by default
+    //
     return prikazVystrel(ja.pozicia.x + kDx[ja.smer], ja.pozicia.y + kDy[ja.smer]);
   }
   //return prikazChod(ja.pozicia.x, ja.pozicia.y);
