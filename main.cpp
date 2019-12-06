@@ -245,6 +245,49 @@ Pozicia add(Pozicia pozice, int smer){
   return Pozicia(pozice.x + kDx[smer], pozice.y + kDy[smer]);
 }
 
+Prikaz prikazVystrel(Pozicia poz){
+  return prikazVystrel(poz.x, poz.y);
+}
+
+Prikaz otocSeNeboPohni(Pozicia poz, int smer){
+      if(ja.smer == smer)
+        return prikazChod(add(ja.pozicia, smer));
+      else{
+        return prikazOtocSa(smer);
+      }
+}
+
+// Najde posledni pohyb, jak se dostat nejrychleji k mistu
+// POZOR: na pohyb hrace se tato hodnota musi invertovat
+// - pokud jsem se dostal na posledni policko, ze jsem sel dolu, tak spravna cesta vede nahoru
+int najdiPosledniPohyb(vector<vector<int>>& vzdalenosti, Pozicia pozice){
+  int lastPohyb = -1;
+  int vzdalenost = vzdalenosti[pozice.y][pozice.x];
+  cerr << "Moje pozice " << ja.pozicia.x << " " << ja.pozicia.y << endl;
+  while(!(pozice == ja.pozicia)){
+    cerr << "Pozice pohled " << pozice.x << " " << pozice.y << endl;
+    cerr << (pozice == ja.pozicia) << endl;
+    for(int i = 0; i < 4; i++){ 
+      Pozicia novaPozicia = add(pozice, i);
+      if(!vMape(novaPozicia.x, novaPozicia.y))
+        continue;
+      int novaVzd = vzdalenosti[novaPozicia.y][novaPozicia.x];
+      cerr << "vzd " << vzdalenost << " " << novaVzd << endl;
+      if(vzdalenost > novaVzd){
+        vzdalenost = novaVzd;
+        lastPohyb = i;
+        pozice = novaPozicia;
+        break;
+      }
+    }
+  }
+  return lastPohyb;
+}
+
+inline int invertovatSmer(int smer){
+  return (4 + smer - 2)%4;
+}
+
 // main() zavola tuto funkciu, ked chce vediet, ake prikazy chceme vykonat
 Prikaz zistiTah() {
   cerr << vZone(ja.pozicia.x, ja.pozicia.y) << endl;
@@ -320,38 +363,57 @@ Prikaz zistiTah() {
     //
     // Najiti cesty k nejlepsimu predmetu
     //
-    cerr << "Dobre2" << endl;
+    cerr << "Nalezen predmet sour " << pozice.x << " " << pozice.y << endl;
     int lastPohyb = -1;
     if(bestP != -1){
-      int vzdalenost = vzdalenosti[pozice.y][pozice.x];
-      cerr << pozice.x << " " << pozice.y << endl;
-      while(!(pozice == ja.pozicia)){
-        cerr << pozice.x << " " << pozice.y << endl;
-        for(int i = 0; i < 4; i++){ 
-          Pozicia novaPozicia = add(pozice, i);
-          if(!vMape(novaPozicia.x, novaPozicia.y))
-            continue;
-          int novaVzd = vzdalenosti[novaPozicia.y][novaPozicia.x];
-          cerr << "vzd " << vzdalenost << " " << novaVzd << endl;
-          if(vzdalenost > novaVzd){
-            vzdalenost = novaVzd;
-            lastPohyb = i;
-            pozice = novaPozicia;
-            break;
-          }
-        }
-      }
+      lastPohyb = najdiPosledniPohyb(vzdalenosti, pozice);
     }
 
-    cerr << "Dobre3" << endl;
+    cerr << "Last pohyb " << lastPohyb << endl;
     if(lastPohyb != -1){
-      int reverzniPohyb = (4 + lastPohyb - 2)%4;
+      int reverzniPohyb = invertovatSmer(lastPohyb);
       if(ja.smer == reverzniPohyb)
         return prikazChod(add(ja.pozicia, reverzniPohyb));
       else{
         return prikazOtocSa(reverzniPohyb);
       }
     }
+    cerr << "Zkousim najit krabici" << endl;
+    //
+    // Najiti krabice
+    //
+    pozice = Pozicia(-1, -1);
+    for(int w = max(0, ja.pozicia.x - dohled); w < min(mapa.w, ja.pozicia.x + dohled); w++){
+      for(int h = max(0, ja.pozicia.y - dohled); h < min(mapa.w, ja.pozicia.y + dohled); h++){
+        if(vZone(w, h) && stav.krabice[h][w] && (pozice.x == -1 || vzdalenosti[h][w] < vzdalenosti[pozice.y][pozice.x])){
+          pozice = Pozicia(w, h);
+        }
+      }
+    }
+
+    cerr << "Nalezena krabice sour " << pozice.x << " " << pozice.y << endl;
+    cerr << "Vzd " << vzdalenosti[pozice.y][pozice.x] << endl;
+    if(pozice.x != -1){
+      if(vzdalenosti[pozice.y][pozice.x] == 1){
+        int smer = -1;
+        for(int i = 0; i < 4; i++){
+          if(add(ja.pozicia, i) == pozice){
+            smer = i;
+            break;
+          }
+        }
+        cerr << "Smer ke krabici" << ja.smer << " " << smer << endl;
+        if(ja.smer != smer){
+          return prikazOtocSa(smer);
+        }else{
+          return prikazVystrel(add(ja.pozicia, smer));
+        }
+      }else{
+          int smer = najdiPosledniPohyb(vzdalenosti, pozice);
+          return otocSeNeboPohni(ja.pozicia, invertovatSmer(smer));
+      }
+    }
+
 
     // TODO: Pokud nevim, kam jit, jit do stedu
 
