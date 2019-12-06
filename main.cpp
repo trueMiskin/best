@@ -227,7 +227,13 @@ bool horsiScope(int typ){
 
 double prioritaProItem(TriedaItemu trieda, int typ){
   if(trieda == TriedaItemu::ZBRAN){
-    return kPriorita[0][typ] * mamZbran(typ);
+    if(mamZbran(typ))
+      return 0;
+    if(kPriorita[0][ja.zbrane[ja.aktualna_zbran]] < kPriorita[0][typ] ||
+        kPriorita[0][ja.zbrane[(ja.aktualna_zbran+1)%2]] < kPriorita[0][typ] )
+      return kPriorita[0][typ];
+    else
+      return 0;
   }else if(trieda == TriedaItemu::VESTA){
     return kPriorita[1][typ] * horsiVesta(typ);
   }else if(trieda == TriedaItemu::SCOPE){
@@ -235,6 +241,11 @@ double prioritaProItem(TriedaItemu trieda, int typ){
   }else{
     return kPriorita[3][typ];
   }
+}
+
+// Funkce urcena jen pro vymenu veci - zbrani
+double absolutniHodnotaZbrane(int typ){
+  return kPriorita[0][typ];
 }
 
 inline double prioritaProItem(Item item){
@@ -314,18 +325,47 @@ Prikaz zistiTah() {
     //
     // Sebrani predmetu
     //
-    int index = -1;
+    bool prehodNasazenouZbran = false;
+    int index = -1; double indexPriority = 0;
     for(int i = 0; i < stav.itemy[ja.pozicia.y][ja.pozicia.x].size(); i++){
-      if(i == 0)
-        index = 0;
-      else{
-        Item bestItemNow = stav.itemy[ja.pozicia.y][ja.pozicia.x][index];
-        Item item = stav.itemy[ja.pozicia.y][ja.pozicia.x][i];
-        if(prioritaProItem(item) > prioritaProItem(bestItemNow)){
-          index = i;
+      Item item = stav.itemy[ja.pozicia.y][ja.pozicia.x][i];
+      if(prioritaProItem(item) > indexPriority){
+        cerr << "Zkousim brat predmet " << endl;
+        if(item.trieda == TriedaItemu::SCOPE)
+          cerr << "Mam scope " << ja.scope << " lezici vesta " << item.typ << endl;
+        if(item.trieda == TriedaItemu::VESTA)
+          cerr << "Mam vestu " << ja.vesta << " lezici vesta " << item.typ << endl;
+        
+        if(item.trieda == TriedaItemu::SCOPE && ja.scope >= item.typ)
+          continue;
+        if(item.trieda == TriedaItemu::VESTA && ja.vesta >= item.typ)
+          continue;
+        
+        if(item.trieda == TriedaItemu::ZBRAN){
+          cerr << "Moje zbrane: " << ja.zbrane[0] << ", " << ja.zbrane[1] << endl;
+          cerr << "Lezici zbran " << item.typ << endl;
         }
+
+        if(item.trieda == TriedaItemu::ZBRAN && 
+          absolutniHodnotaZbrane(ja.zbrane[ja.aktualna_zbran]) < absolutniHodnotaZbrane(item.typ)){
+          // vezmu si lepsi zbran
+          prehodNasazenouZbran = false;
+        }else if(item.trieda == TriedaItemu::ZBRAN && 
+          absolutniHodnotaZbrane(ja.zbrane[(ja.aktualna_zbran+1)%2]) < absolutniHodnotaZbrane(item.typ)){
+            // vezmu si lepsi zbran, ale nejdrive musim prohodit aktivni zbran
+            prehodNasazenouZbran = true;
+        }else{
+          // neco vezmu drive, co ma vetsi prioritu
+          prehodNasazenouZbran = false;
+        }
+
+        index = i;
+        indexPriority = prioritaProItem(item);
+      
       }  
     }
+    if(prehodNasazenouZbran)
+      return prikazZmenZbran();
     if(index != -1){
       return prikazZdvihni(index);
     }
@@ -336,7 +376,7 @@ Prikaz zistiTah() {
     //
     cerr << "Dobre" << endl;
     Pozicia pozice = Pozicia(-1, -1);
-    double bestP = -1;
+    double bestP = 0;
     int dohled = kDohladScope[ja.scope];
     for(int w = max(0, ja.pozicia.x - dohled); w < min(mapa.w, ja.pozicia.x + dohled); w++){
       for(int h = max(0, ja.pozicia.y - dohled); h < min(mapa.w, ja.pozicia.y + dohled); h++){
@@ -365,7 +405,7 @@ Prikaz zistiTah() {
     //
     cerr << "Nalezen predmet sour " << pozice.x << " " << pozice.y << endl;
     int lastPohyb = -1;
-    if(bestP != -1){
+    if(bestP != 0){
       lastPohyb = najdiPosledniPohyb(vzdalenosti, pozice);
     }
 
