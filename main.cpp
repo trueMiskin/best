@@ -168,10 +168,10 @@ bool vMape(int x, int y){
     && 0 <= y && y < stav.mapa.h;
 }
 
-// jestli jsme v zone ci ne, border je zmenseny o 2 v obou smerech
+// jestli jsme v zone ci ne
 bool vZone(int x, int y){
-  return stav.zona_x1 < x && x < stav.zona_x2 - 1
-    && stav.zona_y1 < y && y < stav.zona_y2 - 1;
+  return stav.zona_x1 <= x && x < stav.zona_x2 - 1
+    && stav.zona_y1 <= y && y < stav.zona_y2 - 1;
 }
 
 bool vidimPolicko(int x, int y){
@@ -180,9 +180,9 @@ bool vidimPolicko(int x, int y){
 }
 
 double kPriorita[4][5] = {
-    {0, 1, 0.1, 0.2, 0.99}, //zbrane
-    {0, 0.2, 0.3, 0.4}, //vesta
-    {0, 0.05, 0.1}, //scope
+    {0, 1, 0.5, 0.3, 0.99}, //zbrane
+    {0, 0.2, 0.4, 0.45}, //vesta
+    {0, 0.33, 0.38}, //scope
     {0.15} // lekarnicka
 };
 
@@ -321,6 +321,10 @@ Pozicia add(Pozicia pozice, int smer){
   return Pozicia(pozice.x + kDx[smer], pozice.y + kDy[smer]);
 }
 
+Pozicia add(Pozicia pozice, int smer, int skalovani){
+  return Pozicia(pozice.x + kDx[smer] * skalovani, pozice.y + kDy[smer] * skalovani);
+}
+
 Prikaz prikazVystrel(Pozicia poz){
   return prikazVystrel(poz.x, poz.y);
 }
@@ -380,16 +384,79 @@ inline int invertovatSmer(int smer){
   return (4 + smer - 2)%4;
 }
 
+vector<vector<int>> spocitatVzdalenostBezZony(){
+  const int MX = 1e9;
+  queue<pair<Pozicia, int>> fronta;
+  vector<vector<bool>> videno(mapa.h, vector<bool>(mapa.w, false));
+  vector<vector<int>> vzdalenost(mapa.h, vector<int>(mapa.w, MX));
+  fronta.push({ja.pozicia, 0});
+
+  while(!fronta.empty()){
+    auto el = fronta.front(); fronta.pop();
+    Pozicia po = el.first;
+    int delka = el.second;
+    if(mapa.teren[po.y][po.x] != Policko::VOLNE){
+      continue;
+    }
+    /*if(stav.krabice[po.y][po.x]){
+      continue;
+    }*/
+
+    if(vzdalenost[po.y][po.x] != MX)
+      continue;
+
+    vzdalenost[po.y][po.x] = delka;
+
+    for(int i = 0; i < 4; i++){
+      if(vMape(po.x + kDx[i], po.y + kDy[i])){
+        fronta.push({Pozicia(po.x + kDx[i], po.y + kDy[i]), delka + 1});
+      }
+    }
+  }
+
+  return vzdalenost;
+}
+
+Prikaz jidDoStredu(){
+  auto vzdalenosti = spocitatVzdalenostBezZony();
+  int midX = (stav.zona_x1 + stav.zona_x2) / 2;
+  int midY = (stav.zona_y1 + stav.zona_y2) / 2;
+  Pozicia def = Pozicia(midX, midY);
+  int kolikrat = 1;
+  cerr << "lastPart" << endl;
+  while(vzdalenosti[def.y][def.x] == 1e9){
+    for(int i = 0; i < 4; i++){
+      Pozicia newPoz = add(def, i, kolikrat);
+      if(vzdalenosti[newPoz.y][newPoz.x] != 1e9){
+        def = newPoz;
+        break;
+      }
+    }
+    kolikrat++;
+  }
+  cerr << def.x << " " << def.y << endl;
+  int lastPohyb = najdiPosledniPohyb(vzdalenosti, def);
+  cerr << lastPohyb << " lastP" << endl;
+  lastPohyb = invertovatSmer(lastPohyb);
+  Prikaz ret = otocSeNeboPohni(ja.smer, lastPohyb);
+  cerr << "konecna cast " << endl;
+  if(ret.typ == TypPrikazu::CHOD){
+    cerr << "Pohni se" << endl;
+    Pozicia predemnou = add(ja.pozicia, lastPohyb);
+    cerr << "last " << predemnou.x << " " << predemnou.y << endl;
+    if(stav.krabice[predemnou.y][predemnou.x]){
+      return prikazVystrel(predemnou);
+    }
+  }
+
+  return ret;
+}
+
 // main() zavola tuto funkciu, ked chce vediet, ake prikazy chceme vykonat
 Prikaz zistiTah() {
   cerr << vZone(ja.pozicia.x, ja.pozicia.y) << endl;
   if(!vZone(ja.pozicia.x, ja.pozicia.y)){
-    for(int i = 0; i < 4; i++){
-      if(vMape(kDx[i] + ja.pozicia.x, kDy[i] + ja.pozicia.y)
-          && vZone(kDx[i] + ja.pozicia.x, kDy[i] + ja.pozicia.y)){
-        return prikazChod(ja.pozicia.x + kDx[i], ja.pozicia.y + kDy[i]);
-      }
-    }
+    return jidDoStredu();
   }else{
     auto vzdalenosti = spocitatVzdalenost();
 
@@ -411,7 +478,7 @@ Prikaz zistiTah() {
     int dostrel1=max(dostrel(ja.zbrane[0]),dostrel(ja.zbrane[1]));
     if(dostrel1>19){dostrel1-=4;}
     if(dostrel1>30){dostrel1-=6;}
-    for(obet=0; obet<hraci.size(); obet++){
+    for(obet=1; obet<hraci.size(); obet++){
         cerr << "Vzdalenost hrace" << obet <<" " << hraci[obet].vzd << endl; 
         if(hraci[obet].vzd<dostrel1 && !zavadziaStena(hraci[obet].x,hraci[obet].y)){break;}
     }
@@ -610,15 +677,19 @@ Prikaz zistiTah() {
           return p;
       }
     }
+
+    if(ja.zivoty < 60)
+      return prikazLiecSa();
+
+    cerr << "Zadny cil" << endl;
+    Prikaz ret =  jidDoStredu();
+    cerr << ret.typ << " " << ret.parametre[0] << " " << ret.parametre[1] << endl;
     cerr << "Konec tahu" << endl;
-    // TODO: Pokud nevim, kam jit, jit do stedu
-
-    // TODO: Jit nejrychlejsim zpusobem
-
+    return ret;
     //
     // Pokud se dostanu sem - strilim by default
     //
-    return prikazVystrel(ja.pozicia.x + kDx[ja.smer], ja.pozicia.y + kDy[ja.smer]);
+    //return prikazVystrel(ja.pozicia.x + kDx[ja.smer], ja.pozicia.y + kDy[ja.smer]);
   }
   //return prikazChod(ja.pozicia.x, ja.pozicia.y);
 }
