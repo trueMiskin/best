@@ -9,6 +9,7 @@ using namespace std;
 #include "marshal.h"
 #include "update.h"
 #include <queue>
+#include <vector>
 
 int pocet_hracov, moje_id;
 Mapa mapa;
@@ -268,6 +269,23 @@ Prikaz otocSeNeboPohni(Pozicia poz, int smer){
       }
 }
 
+bool spravnySmer(Pozicia pozice){
+  if(ja.smer == 0 && (abs(ja.pozicia.x - pozice.x) <= abs(ja.pozicia.y - pozice.y)) &&
+      pozice.y - ja.pozicia.y < 0){
+        return true;
+  }else if(ja.smer == 2 && (abs(ja.pozicia.x - pozice.x) <= abs(ja.pozicia.y - pozice.y)) &&
+      pozice.y - ja.pozicia.y > 0){
+        return true;
+  }else if(ja.smer == 1 && (abs(ja.pozicia.x - pozice.x) >= abs(ja.pozicia.y - pozice.y)) &&
+      pozice.x - ja.pozicia.x > 0){
+        return true;
+  }else if(ja.smer == 3 && (abs(ja.pozicia.x - pozice.x) >= abs(ja.pozicia.y - pozice.y)) &&
+      pozice.x - ja.pozicia.x < 0){
+        return true;
+  }
+  return false;
+}
+
 // Najde posledni pohyb, jak se dostat nejrychleji k mistu
 // POZOR: na pohyb hrace se tato hodnota musi invertovat
 // - pokud jsem se dostal na posledni policko, ze jsem sel dolu, tak spravna cesta vede nahoru
@@ -450,7 +468,26 @@ Prikaz zistiTah() {
         }
       }else{
           int smer = najdiPosledniPohyb(vzdalenosti, pozice);
-          return otocSeNeboPohni(ja.pozicia, invertovatSmer(smer));
+          Prikaz p = otocSeNeboPohni(ja.pozicia, invertovatSmer(smer));
+          if(spravnySmer(pozice)){
+            vector<Zbran> zb= vector<Zbran>();
+            zb.push_back(kPrototypyZbrani[ja.zbrane[0]]);
+            zb.push_back(kPrototypyZbrani[ja.zbrane[1]]);
+            if(!zavadziaStena(pozice.x, pozice.y)){
+              if(zb[0].zakladna_sila / zb[0].pokles_sily >= vzdalenosti[pozice.y][pozice.x] &&
+                zb[1].zakladna_sila / zb[1].pokles_sily >= vzdalenosti[pozice.y][pozice.x]){
+                  if(zb[(ja.aktualna_zbran+1)%2].cas_medzi_strelami >= zb[ja.aktualna_zbran].cas_medzi_strelami + kCasZmenyZbrane)
+                    return prikazZmenZbran();
+              }
+              if(zb[ja.aktualna_zbran].zakladna_sila / zb[ja.aktualna_zbran].pokles_sily >= vzdalenosti[pozice.y][pozice.x]){
+                return prikazVystrel(pozice.x, pozice.y);
+              }else if(zb[(ja.aktualna_zbran + 1) %2].zakladna_sila / zb[(ja.aktualna_zbran + 1) %2].pokles_sily >= vzdalenosti[pozice.y][pozice.x] &&
+                zb[(ja.aktualna_zbran + 1) %2].cas_medzi_strelami < vzdalenosti[pozice.y][pozice.x] * kCasPohybu[0]){
+                return prikazZmenZbran();
+              }
+            }
+          }
+          return p;
       }
     }
 
