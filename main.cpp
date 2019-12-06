@@ -74,7 +74,7 @@ vector<Pozicia> drahaNaboja(int ciel_x, int ciel_y, bool kontroluj_steny=true, b
     fprintf(stderr,"drahaNaboja: argument mimo mapy %d %d\n", ciel_x, ciel_y);
     return vector<Pozicia>();
   }
-  
+
   int hlavny_smer;
   int dx = ciel_x - ja.pozicia.x, dy = ciel_y - ja.pozicia.y;
   int max_skalarny_sucin = 0;
@@ -85,7 +85,7 @@ vector<Pozicia> drahaNaboja(int ciel_x, int ciel_y, bool kontroluj_steny=true, b
       hlavny_smer = smer;
     }
   }
-    
+
   int vedlajsi_smer = -1;
   int vedlajsi_skalarny_sucin = 0;
   vector<int> kandidati = {(hlavny_smer + 3) % 4, (hlavny_smer + 1) % 4};
@@ -96,7 +96,7 @@ vector<Pozicia> drahaNaboja(int ciel_x, int ciel_y, bool kontroluj_steny=true, b
       vedlajsi_skalarny_sucin = skalakalarny_sucin;
     }
   }
-  
+
   Naboj naboj;
   naboj.pozicia = ja.pozicia;
   naboj.sila = 1;
@@ -126,7 +126,7 @@ vector<Pozicia> drahaNaboja(int ciel_x, int ciel_y, bool kontroluj_steny=true, b
     }
     else if (kontroluj_krabice && stav.krabice[naboj.pozicia.y][naboj.pozicia.x]) {
       naboj_zmizne = true;
-    } 
+    }
     else if (kontroluj_steny && mapa.teren[naboj.pozicia.y][naboj.pozicia.x] == STENA) {
       naboj_zmizne = true;
     }
@@ -214,6 +214,97 @@ vector<vector<int>> spocitatVzdalenost(){
   return vzdalenost;
 }
 
+
+struct hrac{
+    int x, y, vzd;};
+
+bool porovnajhracov(hrac hrac1, hrac hrac2){
+    return hrac1.vzd < hrac2.vzd;
+}
+
+dostrel(int index){
+    return kPrototypyZbrani[index].zakaldna_sila/kPrototypyZbrani[index].pokles_sily;
+}
+
+vector<vector<int>> spocitatVzdalenostOdHraca(){
+  const int MX = 1e9;
+  queue<pair<Pozicia, int>> fronta;
+  vector<vector<bool>> videno(mapa.h, vector<bool>(mapa.w, false));
+  vector<vector<int>> vzdalenostOdHraca(mapa.h, vector<int>(mapa.w, MX));
+  fronta.push({ja.pozicia, 0});
+
+  while(!fronta.empty()){
+    auto el = fronta.front(); fronta.pop();
+    Pozicia po = el.first;
+    int delka = el.second;
+    if(mapa.teren[po.y][po.x] != Policko::VOLNE || mapa.teren[po.y][po.x] != Policko::OKNO){
+      continue;
+    }
+    if(vzdalenostOdHraca[po.y][po.x] != MX)
+      continue;
+
+    vzdalenostOdHraca[po.y][po.x] = delka;
+
+    for(int i = 0; i < 4; i++){
+      if(vMape(po.x + kDx[i], po.y + kDy[i])){
+        fronta.push({Pozicia(po.x + kDx[i], po.y + kDy[i]), delka + 1});
+      }
+    }
+
+  }
+  vector<hrac> hraci;
+  hrac x;
+  for(i=0; i<stav.hraci.size(); i++){
+    x.x=stav.hraci[i].pozicia.x;
+    x.y=stav.hraci[i].pozicia.y;
+    x.vzd=vzdalenostOdHraca[stav.hraci[i].pozicia.x][stav.hraci[i].pozicia.y];
+  }
+  sort(hraci.begin(),hraci.end(),porovnajhracov());
+  return hraci;
+}
+    int obet;
+    int dostrel1=max(dostrel(ja.zbrane[0]),dostrel(ja.zbrane[1]));
+    if(dostrel1>19){dostrel1-=4;}
+    if(dostrel1>30){dostrel1-=6;}
+    for(obet=0: obet<hraci.size(); obet++){
+        if(hraci[obet].vzd<dostrel1 && zavadziaStena(hraci[obet].x,hraci[obet].y)){break;}
+    }
+    int A=max(max(hraci[obet].x-ja.pozicia.x,ja.pozicia.x-hraci[obet].x),max(hraci[obet].y-ja.pozicia.y,ja.pozicia.y-hraci[obet].y));
+
+    if(!((ja.smer == 0 && ja.pozicia.y-hraci[obet].y==A) || (ja.smer == 1 && hraci[obet].x-ja.pozicia.x==A)||
+    (ja.smer == 2 && hraci[obet].y-ja.pozicia.y==A) || (ja.smer == 3 && ja.pozicia.x-hraci[obet].x==A))){
+        if(hraci[obet].y-ja.pozicia.y==A){       // Juh
+            prikazOtocSa(2);}
+        else{if(ja.pozicia.y-hraci[obet].y==A){  // Sever
+            prikazOtocSa(0);}
+        else{if(hraci[obet].x-ja.pozicia.x==A){  // Vychod
+            prikazOtocSa(1);}
+        else{if(ja.pozicia.x-hraci[obet].x==A){  // Zapad
+            prikazOtocSa(3);}}}}
+    }
+    if(hraci[obet].vzd==1){
+        if(ja.zbrane[0]==3||ja.zbrane[1]==3){if(ja.zbrane[ja.aktualna_zbran]!=3){prikazZmenZbran();}}
+        else if(ja.zbrane[0]==4||ja.zbrane[1]==4){if(ja.zbrane[ja.aktualna_zbran]!=4){prikazZmenZbran();}}
+        else if(ja.zbrane[0]==1||ja.zbrane[1]==1){if(ja.zbrane[ja.aktualna_zbran]!=1){prikazZmenZbran();}}
+        else{if(ja.zbrane[ja.aktualna_zbran]!=0){prikazZmenZbran();}}} //paste
+    if(hraci[obet].vzd==2){
+        if(ja.zbrane[0]==4||ja.zbrane[1]==4){if(ja.zbrane[ja.aktualna_zbran]!=4){prikazZmenZbran();}}
+        else if(ja.zbrane[0]==1||ja.zbrane[1]==1){if(ja.zbrane[ja.aktualna_zbran]!=1){prikazZmenZbran();}}
+        else{if(ja.zbrane[ja.aktualna_zbran]!=2){prikazZmenZbran();}}} //sniperka
+    if(hraci[obet].vzd==3){
+        if(ja.zbrane[0]==1||ja.zbrane[1]==1){if(ja.zbrane[ja.aktualna_zbran]!=1){prikazZmenZbran();}}
+        else if(ja.zbrane[0]==2||ja.zbrane[1]==2){if(ja.zbrane[ja.aktualna_zbran]!=2){prikazZmenZbran();}}
+        else{if(ja.zbrane[ja.aktualna_zbran]!=4){prikazZmenZbran();}}} //brokovnica
+    if(hraci[obet].vzd>3 && hraci[i].vzd<11){
+        if(ja.zbrane[0]==1||ja.zbrane[1]==1){if(ja.zbrane[ja.aktualna_zbran]!=1){prikazZmenZbran();}}
+        else{if(ja.zbrane[ja.aktualna_zbran]!=2){prikazZmenZbran();}}} //sniperka
+    if(hraci[obet].vzd<10){
+        if(ja.zbrane[0]==2||ja.zbrane[1]==2){if(ja.zbrane[ja.aktualna_zbran]!=2){prikazZmenZbran();}}
+        else{if(ja.zbrane[ja.aktualna_zbran]!=1){prikazZmenZbran();}}} //samopal
+
+    prikazVystrel(hrac[obet].x,hraci[obet].y);
+
+
 bool mamZbran(int typ){
   return ja.zbrane[0] == typ || ja.zbrane[1] == typ;
 }
@@ -296,7 +387,7 @@ int najdiPosledniPohyb(vector<vector<int>>& vzdalenosti, Pozicia pozice){
   while(!(pozice == ja.pozicia)){
     cerr << "Pozice pohled " << pozice.x << " " << pozice.y << endl;
     cerr << (pozice == ja.pozicia) << endl;
-    for(int i = 0; i < 4; i++){ 
+    for(int i = 0; i < 4; i++){
       Pozicia novaPozicia = add(pozice, i);
       if(!vMape(novaPozicia.x, novaPozicia.y))
         continue;
@@ -339,7 +430,7 @@ Prikaz zistiTah() {
 
     // TODO: Pokud stoji blizko nepritel a ja mam zbran na dalku - strilet
 
-    
+
     //
     // Sebrani predmetu
     //
@@ -387,7 +478,7 @@ Prikaz zistiTah() {
     if(index != -1){
       return prikazZdvihni(index);
     }
-    
+
 
     //
     // Najiti predmetu
@@ -408,7 +499,7 @@ Prikaz zistiTah() {
 
           int vzd = vzdalenosti[h][w];
           priorita = priorita - (vzd * 0.02);
-          
+
 
           if(bestP < priorita){
             pozice = Pozicia(w, h);
@@ -508,13 +599,13 @@ Prikaz zistiTah() {
 int main() {
   // v tejto funkcii su vseobecne veci, nemusite ju menit (ale mozte).
   srand(time(0) ^ (getpid() << 6));
-  
+
   nacitaj(cin, mapa);
   nacitaj(cin, pocet_hracov);
   nacitaj(cin, moje_id);
   inicializuj();
   stav = Stav(mapa, pocet_hracov);
-  
+
   while (cin.good()) {
     nacitaj(cin, stav);
     ja = stav.hraci[moje_id];
